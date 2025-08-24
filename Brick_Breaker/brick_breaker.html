@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<!-- This code was produced by ChatGPT at 2025/08/24 -->
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>打磚塊 Brick Breaker</title>
+    <style>
+        :root {
+            --bg: #0f1226;
+            --panel: #171b39;
+            --text: #e8ecff;
+            --accent: #7aa2ff;
+            --accent-2: #89f7fe;
+            --win: #34d399;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100svh;
+            display: grid;
+            place-items: center;
+            background: radial-gradient(1200px 800px at 70% -20%, #1b235a, transparent),
+                radial-gradient(900px 600px at -10% 120%, #0d4d68, transparent),
+                var(--bg);
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            color: var(--text);
+        }
+
+        .wrap {
+            width: min(92vw, 880px);
+        }
+
+        header {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: .75rem;
+            align-items: center;
+            background: color-mix(in srgb, var(--panel) 85%, #000 15%);
+            border: 1px solid #2a2f57;
+            border-radius: 16px;
+            padding: .9rem 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+            margin-bottom: .8rem;
+        }
+
+        .title {
+            font-weight: 700;
+            letter-spacing: .3px;
+        }
+
+        .hud {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .pill {
+            padding: .35rem .7rem;
+            border-radius: 999px;
+            background: #222752;
+        }
+
+        button {
+            appearance: none;
+            border: 0;
+            cursor: pointer;
+            font-weight: 600;
+            padding: .6rem .9rem;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #0b0f24;
+            box-shadow: 0 6px 18px rgba(122, 162, 255, .35);
+            transition: transform .06s ease, filter .2s ease;
+        }
+
+        button:active {
+            transform: translateY(1px) scale(.99);
+        }
+
+        button:disabled {
+            filter: grayscale(.7) brightness(.8);
+            cursor: not-allowed;
+        }
+
+        .canvas-shell {
+            background: #0c1030;
+            border: 1px solid #2a2f57;
+            border-radius: 16px;
+            padding: .6rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, .4);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: #0b0f28;
+            border-radius: 12px;
+        }
+
+        footer {
+            opacity: .8;
+            margin-top: .6rem;
+            font-size: .9rem;
+        }
+
+        kbd {
+            background: #1e254b;
+            padding: .15rem .35rem;
+            border-radius: 6px;
+            border: 1px solid #2c3370;
+        }
+
+        .win {
+            color: var(--win);
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <header>
+            <div class="title">打磚塊 Brick Breaker</div>
+            <div class="hud">
+                <div class="pill">分數：<span id="score">0</span></div>
+                <div class="pill">狀態：<span id="status">進行中</span></div>
+                <button id="resetBtn" type="button">重新開始</button>
+            </div>
+        </header>
+
+        <div class="canvas-shell">
+            <!-- 固定邏輯座標 800×500；透過 CSS 讓畫面可縮放。 -->
+            <canvas id="game" width="800" height="500" aria-label="打磚塊遊戲畫布"></canvas>
+        </div>
+
+        <footer>
+            方向鍵 <kbd>←</kbd>/<kbd>→</kbd> 控制擋板；清掉所有磚塊即<span class="win">獲勝</span>。
+        </footer>
+    </div>
+
+    <script>
+        // ===== 基本設定 =====
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const statusEl = document.getElementById('status');
+        const resetBtn = document.getElementById('resetBtn');
+
+        const W = canvas.width, H = canvas.height;
+
+        // 擋板
+        const paddle = {
+            w: 110, h: 16,
+            x: (W - 110) / 2,
+            y: H - 36,
+            speed: 7,
+            movingLeft: false,
+            movingRight: false,
+            draw() {
+                // 漸層擋板
+                const g = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.h);
+                g.addColorStop(0, '#9ab0ff');
+                g.addColorStop(1, '#5b75ff');
+                ctx.fillStyle = g;
+                roundRect(ctx, this.x, this.y, this.w, this.h, 8, true);
+            }
+        };
+
+        // 球
+        const ball = {
+            r: 8,
+            x: W / 2,
+            y: H / 2,
+            vx: 4,
+            vy: -4,
+            draw() {
+                const g = ctx.createRadialGradient(this.x - 3, this.y - 3, 2, this.x, this.y, this.r + 2);
+                g.addColorStop(0, '#e8ecff');
+                g.addColorStop(1, '#8fb3ff');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        };
+
+        // 磚塊設定
+        const BRICK = { rows: 6, cols: 10, w: 70, h: 20, gap: 6, top: 60, left: 35 };
+        let bricks = [];
+
+        // 遊戲狀態
+        let score = 0;
+        let running = true;
+        let rafId = null;
+
+        // 初始化磚塊陣列
+        function buildBricks() {
+            bricks = [];
+            for (let r = 0; r < BRICK.rows; r++) {
+                for (let c = 0; c < BRICK.cols; c++) {
+                    const x = BRICK.left + c * (BRICK.w + BRICK.gap);
+                    const y = BRICK.top + r * (BRICK.h + BRICK.gap);
+                    bricks.push({ x, y, w: BRICK.w, h: BRICK.h, alive: true, hue: 210 + r * 8 + c * .6 });
+                }
+            }
+        }
+
+        function drawBricks() {
+            for (const b of bricks) {
+                if (!b.alive) continue;
+                const g = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+                g.addColorStop(0, `hsl(${b.hue} 100% 80%)`);
+                g.addColorStop(1, `hsl(${b.hue} 90% 65%)`);
+                ctx.fillStyle = g;
+                roundRect(ctx, b.x, b.y, b.w, b.h, 6, true);
+            }
+        }
+
+        // 圓角矩形小工具
+        function roundRect(ctx, x, y, w, h, r, fill = false, stroke = false) {
+            const rr = Math.min(r, w / 2, h / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + rr, y);
+            ctx.arcTo(x + w, y, x + w, y + h, rr);
+            ctx.arcTo(x + w, y + h, x, y + h, rr);
+            ctx.arcTo(x, y + h, x, y, rr);
+            ctx.arcTo(x, y, x + w, y, rr);
+            if (fill) ctx.fill();
+            if (stroke) ctx.stroke();
+        }
+
+        // 重設遊戲
+        function resetGame() {
+            score = 0;
+            scoreEl.textContent = score;
+            statusEl.textContent = '進行中';
+            paddle.x = (W - paddle.w) / 2;
+            ball.x = W / 2; ball.y = H / 2; ball.vx = 4; ball.vy = -4;
+            buildBricks();
+            running = true;
+            if (!rafId) loop();
+        }
+
+        // 控制
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') paddle.movingLeft = true;
+            if (e.key === 'ArrowRight') paddle.movingRight = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') paddle.movingLeft = false;
+            if (e.key === 'ArrowRight') paddle.movingRight = false;
+        });
+
+        resetBtn.addEventListener('click', resetGame);
+
+        // 主迴圈
+        function loop() {
+            rafId = requestAnimationFrame(loop);
+            ctx.clearRect(0, 0, W, H);
+
+            // 邊界與背景效果
+            drawBackdrop();
+
+            // 擋板移動
+            if (paddle.movingLeft) paddle.x -= paddle.speed;
+            if (paddle.movingRight) paddle.x += paddle.speed;
+            paddle.x = Math.max(10, Math.min(W - paddle.w - 10, paddle.x));
+
+            // 球移動
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // 牆壁反彈
+            if (ball.x - ball.r < 0 || ball.x + ball.r > W) ball.vx *= -1;
+            if (ball.y - ball.r < 0) ball.vy *= -1;
+
+            // 擋板碰撞
+            if (
+                ball.y + ball.r >= paddle.y &&
+                ball.x >= paddle.x && ball.x <= paddle.x + paddle.w &&
+                ball.y + ball.r <= paddle.y + paddle.h + Math.abs(ball.vy)
+            ) {
+                // 依撞擊位置調整水平速度，提高手感
+                const hit = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
+                ball.vx = hit * 5; // -5 ~ 5
+                ball.vy = -Math.abs(ball.vy) - 0.1; // 向上
+            }
+
+            // 磚塊碰撞
+            for (const b of bricks) {
+                if (!b.alive) continue;
+                if (
+                    ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w &&
+                    ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h
+                ) {
+                    b.alive = false;
+                    score += 10;
+                    scoreEl.textContent = score;
+
+                    // 反彈：判斷水平/垂直面
+                    const overlapX = Math.min(ball.x + ball.r - b.x, b.x + b.w - (ball.x - ball.r));
+                    const overlapY = Math.min(ball.y + ball.r - b.y, b.y + b.h - (ball.y - ball.r));
+                    if (overlapX < overlapY) ball.vx *= -1; else ball.vy *= -1;
+                }
+            }
+
+            // 輸/勝判定（本需求只要求勝利）
+            if (ball.y - ball.r > H) {
+                // 球掉出下邊界：簡單地重置回上方，維持分數不變
+                ball.x = W / 2; ball.y = paddle.y - 30; ball.vx = 4 * (Math.random() > .5 ? 1 : -1); ball.vy = -4;
+            }
+
+            // 全清即勝利
+            if (bricks.every(b => !b.alive) && running) {
+                statusEl.textContent = '你贏了！';
+                drawWinBanner();
+                running = false;
+                cancelAnimationFrame(rafId); rafId = null;
+                return;
+            }
+
+            // 繪圖
+            paddle.draw();
+            drawBricks();
+            ball.draw();
+        }
+
+        // 背景格狀裝飾
+        function drawBackdrop() {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(140,160,255,.08)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < W; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+            }
+            for (let y = 0; y < H; y += 40) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawWinBanner() {
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,.45)';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = '#d1fae5';
+            ctx.font = 'bold 48px system-ui, -apple-system, Segoe UI, Roboto';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎉 你贏了！', W / 2, H / 2 - 10);
+            ctx.font = 'normal 18px system-ui, -apple-system, Segoe UI, Roboto';
+            ctx.fillText('按「重新開始」可再玩一局', W / 2, H / 2 + 26);
+            ctx.restore();
+        }
+
+        // 啟動
+        buildBricks();
+        loop();
+    </script>
+</body>
+
+</html>
