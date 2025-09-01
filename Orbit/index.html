@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>太陽系探索者 - 3D 太空探索遊戲</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            overflow: hidden;
+            color: white;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            display: block;
+            cursor: grab;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .ui-panel {
+            position: absolute;
+            background: rgba(0, 20, 40, 0.9);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-panel {
+            top: 20px;
+            left: 20px;
+            width: 280px;
+        }
+
+        .info-panel {
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .bottom-panel {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        h3 {
+            color: #64b5f6;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #b0bec5;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        button {
+            background: linear-gradient(45deg, #1976d2, #42a5f5);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: linear-gradient(45deg, #1565c0, #1e88e5);
+            transform: translateY(-1px);
+        }
+
+        .planet-button {
+            margin: 2px;
+            padding: 6px 12px;
+            font-size: 11px;
+        }
+
+        .active {
+            background: linear-gradient(45deg, #f57c00, #ff9800);
+        }
+
+        .stats {
+            font-size: 11px;
+            line-height: 1.4;
+            color: #e1f5fe;
+        }
+
+        .highlight {
+            color: #ffeb3b;
+            font-weight: bold;
+        }
+
+        .educational-info {
+            background: rgba(25, 118, 210, 0.1);
+            border-left: 3px solid #1976d2;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .physics-display {
+            background: rgba(76, 175, 80, 0.1);
+            border-left: 3px solid #4caf50;
+            padding: 8px;
+            margin: 8px 0;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+
+        #stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="gameContainer">
+        <canvas id="stars"></canvas>
+        <canvas id="canvas"></canvas>
+
+        <div class="ui-panel control-panel">
+            <h3>🚀 控制面板</h3>
+
+            <div class="control-group">
+                <label>時間速度</label>
+                <input type="range" id="timeSpeed" min="0" max="5" step="0.1" value="1">
+                <span id="speedDisplay">1.0x</span>
+            </div>
+
+            <div class="control-group">
+                <label>縮放</label>
+                <input type="range" id="zoomSlider" min="0.5" max="3" step="0.1" value="1">
+            </div>
+
+            <div class="control-group">
+                <label>選擇天體</label>
+                <div>
+                    <button class="planet-button active" data-planet="earth">🌍 地球</button>
+                    <button class="planet-button" data-planet="moon">🌙 月球</button>
+                    <button class="planet-button" data-planet="mars">🔴 火星</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button id="resetView">重置視角</button>
+                <button id="toggleOrbits">顯示軌道</button>
+            </div>
+        </div>
+
+        <div class="ui-panel info-panel">
+            <h3 id="selectedPlanetName">🌍 地球</h3>
+            <div id="planetInfo" class="stats">
+                <div class="educational-info">
+                    <strong>基本資訊：</strong><br>
+                    直徑：<span class="highlight">12,742 公里</span><br>
+                    距離太陽：<span class="highlight">1.496 億公里</span><br>
+                    公轉週期：<span class="highlight">365.25 天</span>
+                </div>
+
+                <div class="physics-display">
+                    <strong>物理參數：</strong><br>
+                    軌道速度：<span id="orbitalSpeed">29.78 km/s</span><br>
+                    重力：<span id="gravity">9.81 m/s²</span><br>
+                    當前角度：<span id="currentAngle">0°</span>
+                </div>
+
+                <div class="educational-info">
+                    <strong>有趣事實：</strong><br>
+                    <span id="funFact">地球是太陽系中唯一已知有生命的行星，71%的表面被水覆蓋。</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="ui-panel bottom-panel">
+            <button id="pausePlay">⏸️ 暫停</button>
+            <span>拖拽滑鼠旋轉視角 | 滾輪縮放</span>
+        </div>
+    </div>
+
+    <script>
+        class SolarSystemExplorer {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.starsCanvas = document.getElementById('stars');
+                this.starsCtx = this.starsCanvas.getContext('2d');
+
+                this.setupCanvas();
+                this.setupStars();
+
+                // 遊戲狀態
+                this.timeSpeed = 1;
+                this.zoom = 1;
+                this.rotation = { x: 0, y: 0 };
+                this.selectedPlanet = 'earth';
+                this.showOrbits = true;
+                this.isPaused = false;
+                this.time = 0;
+
+                // 滑鼠控制
+                this.isDragging = false;
+                this.lastMouse = { x: 0, y: 0 };
+
+                // 天體資料
+                this.celestialBodies = {
+                    sun: {
+                        name: '太陽',
+                        radius: 30,
+                        color: '#FDB813',
+                        x: 0, y: 0,
+                        info: {
+                            diameter: '1,392,700 公里',
+                            distance: '0 公里',
+                            period: '不適用',
+                            speed: '0 km/s',
+                            gravity: '274 m/s²',
+                            fact: '太陽是太陽系的中心，包含了太陽系99.86%的質量。'
+                        }
+                    },
+                    earth: {
+                        name: '地球',
+                        radius: 8,
+                        color: '#6B93D6',
+                        orbitRadius: 150,
+                        orbitSpeed: 0.02,
+                        angle: 0,
+                        info: {
+                            diameter: '12,742 公里',
+                            distance: '1.496 億公里',
+                            period: '365.25 天',
+                            speed: '29.78 km/s',
+                            gravity: '9.81 m/s²',
+                            fact: '地球是太陽系中唯一已知有生命的行星，71%的表面被水覆蓋。'
+                        }
+                    },
+                    moon: {
+                        name: '月球',
+                        radius: 3,
+                        color: '#C0C0C0',
+                        orbitRadius: 25,
+                        orbitSpeed: 0.08,
+                        angle: 0,
+                        parent: 'earth',
+                        info: {
+                            diameter: '3,474 公里',
+                            distance: '384,400 公里（距地球）',
+                            period: '27.3 天',
+                            speed: '1.02 km/s',
+                            gravity: '1.62 m/s²',
+                            fact: '月球是地球唯一的天然衛星，它的引力造成地球的潮汐現象。'
+                        }
+                    },
+                    mars: {
+                        name: '火星',
+                        radius: 6,
+                        color: '#CD5C5C',
+                        orbitRadius: 220,
+                        orbitSpeed: 0.015,
+                        angle: Math.PI,
+                        info: {
+                            diameter: '6,779 公里',
+                            distance: '2.279 億公里',
+                            period: '687 天',
+                            speed: '24.07 km/s',
+                            gravity: '3.71 m/s²',
+                            fact: '火星被稱為紅色行星，因為其表面富含氧化鐵。它有兩個小衛星：火衛一和火衛二。'
+                        }
+                    }
+                };
+
+                this.setupEventListeners();
+                this.updatePlanetInfo();
+                this.animate();
+            }
+
+            setupCanvas() {
+                const resize = () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                    this.starsCanvas.width = window.innerWidth;
+                    this.starsCanvas.height = window.innerHeight;
+                };
+                resize();
+                window.addEventListener('resize', resize);
+            }
+
+            setupStars() {
+                const stars = [];
+                for (let i = 0; i < 200; i++) {
+                    stars.push({
+                        x: Math.random() * this.starsCanvas.width,
+                        y: Math.random() * this.starsCanvas.height,
+                        size: Math.random() * 2,
+                        opacity: Math.random()
+                    });
+                }
+
+                const drawStars = () => {
+                    this.starsCtx.clearRect(0, 0, this.starsCanvas.width, this.starsCanvas.height);
+                    stars.forEach(star => {
+                        this.starsCtx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                        this.starsCtx.fillRect(star.x, star.y, star.size, star.size);
+                    });
+                };
+                drawStars();
+            }
+
+            setupEventListeners() {
+                // 時間控制
+                document.getElementById('timeSpeed').addEventListener('input', (e) => {
+                    this.timeSpeed = parseFloat(e.target.value);
+                    document.getElementById('speedDisplay').textContent = this.timeSpeed.toFixed(1) + 'x';
+                });
+
+                // 縮放控制
+                document.getElementById('zoomSlider').addEventListener('input', (e) => {
+                    this.zoom = parseFloat(e.target.value);
+                });
+
+                // 行星選擇
+                document.querySelectorAll('.planet-button').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.planet-button').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.selectedPlanet = e.target.dataset.planet;
+                        this.updatePlanetInfo();
+                    });
+                });
+
+                // 控制按鈕
+                document.getElementById('resetView').addEventListener('click', () => {
+                    this.rotation = { x: 0, y: 0 };
+                    this.zoom = 1;
+                    document.getElementById('zoomSlider').value = 1;
+                });
+
+                document.getElementById('toggleOrbits').addEventListener('click', (e) => {
+                    this.showOrbits = !this.showOrbits;
+                    e.target.textContent = this.showOrbits ? '隱藏軌道' : '顯示軌道';
+                });
+
+                document.getElementById('pausePlay').addEventListener('click', (e) => {
+                    this.isPaused = !this.isPaused;
+                    e.target.textContent = this.isPaused ? '▶️ 播放' : '⏸️ 暫停';
+                });
+
+                // 滑鼠控制
+                this.canvas.addEventListener('mousedown', (e) => {
+                    this.isDragging = true;
+                    this.lastMouse = { x: e.clientX, y: e.clientY };
+                });
+
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (this.isDragging) {
+                        const deltaX = e.clientX - this.lastMouse.x;
+                        const deltaY = e.clientY - this.lastMouse.y;
+                        this.rotation.y += deltaX * 0.01;
+                        this.rotation.x += deltaY * 0.01;
+                        this.lastMouse = { x: e.clientX, y: e.clientY };
+                    }
+                });
+
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isDragging = false;
+                });
+
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    this.zoom *= (1 - e.deltaY * 0.001);
+                    this.zoom = Math.max(0.5, Math.min(3, this.zoom));
+                    document.getElementById('zoomSlider').value = this.zoom;
+                });
+            }
+
+            updatePlanetInfo() {
+                const planet = this.celestialBodies[this.selectedPlanet];
+                const planetEmojis = {
+                    earth: '🌍',
+                    moon: '🌙',
+                    mars: '🔴'
+                };
+
+                document.getElementById('selectedPlanetName').textContent =
+                    `${planetEmojis[this.selectedPlanet]} ${planet.name}`;
+
+                const info = planet.info;
+                document.getElementById('planetInfo').innerHTML = `
+                    <div class="educational-info">
+                        <strong>基本資訊：</strong><br>
+                        直徑：<span class="highlight">${info.diameter}</span><br>
+                        距離：<span class="highlight">${info.distance}</span><br>
+                        公轉週期：<span class="highlight">${info.period}</span>
+                    </div>
+                    
+                    <div class="physics-display">
+                        <strong>物理參數：</strong><br>
+                        軌道速度：<span id="orbitalSpeed">${info.speed}</span><br>
+                        重力：<span id="gravity">${info.gravity}</span><br>
+                        當前角度：<span id="currentAngle">${(planet.angle * 180 / Math.PI).toFixed(1)}°</span>
+                    </div>
+                    
+                    <div class="educational-info">
+                        <strong>有趣事實：</strong><br>
+                        <span id="funFact">${info.fact}</span>
+                    </div>
+                `;
+            }
+
+            updatePhysics() {
+                if (this.isPaused) return;
+
+                this.time += this.timeSpeed * 0.016;
+
+                // 更新行星位置
+                Object.keys(this.celestialBodies).forEach(key => {
+                    const body = this.celestialBodies[key];
+                    if (body.orbitSpeed) {
+                        body.angle += body.orbitSpeed * this.timeSpeed;
+
+                        if (body.parent) {
+                            // 衛星繞行星運動
+                            const parent = this.celestialBodies[body.parent];
+                            body.x = parent.x + Math.cos(body.angle) * body.orbitRadius;
+                            body.y = parent.y + Math.sin(body.angle) * body.orbitRadius;
+                        } else {
+                            // 行星繞太陽運動
+                            body.x = Math.cos(body.angle) * body.orbitRadius;
+                            body.y = Math.sin(body.angle) * body.orbitRadius;
+                        }
+                    }
+                });
+
+                // 更新選中行星的資訊
+                const selectedBody = this.celestialBodies[this.selectedPlanet];
+                if (selectedBody.angle !== undefined) {
+                    document.getElementById('currentAngle').textContent =
+                        (selectedBody.angle * 180 / Math.PI % 360).toFixed(1) + '°';
+                }
+            }
+
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+
+                // 繪製軌道
+                if (this.showOrbits) {
+                    this.ctx.strokeStyle = 'rgba(100, 200, 255, 0.3)';
+                    this.ctx.lineWidth = 1;
+
+                    Object.values(this.celestialBodies).forEach(body => {
+                        if (body.orbitRadius && !body.parent) {
+                            this.ctx.beginPath();
+                            this.ctx.arc(centerX, centerY, body.orbitRadius * this.zoom, 0, Math.PI * 2);
+                            this.ctx.stroke();
+                        }
+                    });
+                }
+
+                // 繪製天體
+                Object.keys(this.celestialBodies).forEach(key => {
+                    const body = this.celestialBodies[key];
+                    const x = centerX + (body.x || 0) * this.zoom;
+                    const y = centerY + (body.y || 0) * this.zoom;
+                    const radius = body.radius * this.zoom;
+
+                    // 繪製天體
+                    this.ctx.fillStyle = body.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    // 添加光暈效果
+                    if (key === 'sun') {
+                        const gradient = this.ctx.createRadialGradient(x, y, radius, x, y, radius * 2);
+                        gradient.addColorStop(0, 'rgba(253, 184, 19, 0.3)');
+                        gradient.addColorStop(1, 'rgba(253, 184, 19, 0)');
+                        this.ctx.fillStyle = gradient;
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, radius * 2, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+
+                    // 高亮選中的天體
+                    if (key === this.selectedPlanet) {
+                        this.ctx.strokeStyle = '#ffeb3b';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, radius + 5, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                    }
+
+                    // 繪製月球軌道
+                    if (key === 'earth' && this.showOrbits) {
+                        this.ctx.strokeStyle = 'rgba(192, 192, 192, 0.5)';
+                        this.ctx.lineWidth = 1;
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, this.celestialBodies.moon.orbitRadius * this.zoom, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                    }
+                });
+            }
+
+            animate() {
+                this.updatePhysics();
+                this.render();
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // 啟動遊戲
+        window.addEventListener('load', () => {
+            new SolarSystemExplorer();
+        });
+    </script>
+    <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9779137586b74a0c',t:'MTc1NjYwNzExMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
+</html>

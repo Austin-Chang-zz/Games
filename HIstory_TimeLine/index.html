@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ancient Civilizations Timeline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #2c1810 0%, #8b4513 50%, #daa520 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #2c1810;
+        }
+
+        .timeline-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            color: #8b4513;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        .timeline {
+            position: relative;
+            margin: 40px 0;
+        }
+
+        .timeline-line {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, #daa520, #8b4513, #2c1810);
+            border-radius: 2px;
+        }
+
+        .timeline-event {
+            position: relative;
+            margin: 60px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .timeline-event:hover {
+            transform: scale(1.02);
+        }
+
+        .timeline-event.left {
+            text-align: right;
+            padding-right: calc(50% + 40px);
+        }
+
+        .timeline-event.right {
+            text-align: left;
+            padding-left: calc(50% + 40px);
+        }
+
+        .event-marker {
+            position: absolute;
+            left: 50%;
+            top: 20px;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 4px solid white;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        .event-marker.egyptian {
+            background: #daa520;
+        }
+
+        .event-marker.greek {
+            background: #4169e1;
+        }
+
+        .event-marker.roman {
+            background: #dc143c;
+        }
+
+        .timeline-event:hover .event-marker {
+            transform: translateX(-50%) scale(1.3);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-left: 6px solid;
+            transition: all 0.3s ease;
+        }
+
+        .event-card.egyptian {
+            border-left-color: #daa520;
+        }
+
+        .event-card.greek {
+            border-left-color: #4169e1;
+        }
+
+        .event-card.roman {
+            border-left-color: #dc143c;
+        }
+
+        .event-date {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        .event-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #2c1810;
+        }
+
+        .event-civilization {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .event-civilization.egyptian {
+            background: #daa520;
+        }
+
+        .event-civilization.greek {
+            background: #4169e1;
+        }
+
+        .event-civilization.roman {
+            background: #dc143c;
+        }
+
+        .event-preview {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #555;
+        }
+
+        .event-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+            margin-top: 15px;
+        }
+
+        .event-details.expanded {
+            max-height: 500px;
+        }
+
+        .event-details p {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #444;
+            margin-bottom: 12px;
+        }
+
+        .expand-btn {
+            background: none;
+            border: none;
+            color: #8b4513;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 10px;
+            transition: color 0.3s ease;
+        }
+
+        .expand-btn:hover {
+            color: #2c1810;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 768px) {
+
+            .timeline-event.left,
+            .timeline-event.right {
+                text-align: left;
+                padding-left: 40px;
+                padding-right: 20px;
+            }
+
+            .event-marker {
+                left: 20px;
+                transform: translateX(0);
+            }
+
+            .timeline-line {
+                left: 20px;
+                transform: translateX(0);
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .legend {
+                flex-direction: column;
+                align-items: center;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="timeline-container">
+        <div class="header">
+            <h1>🏛️ Ancient Civilizations Timeline</h1>
+            <p>Explore the rise and fall of great empires from 3000 BCE to 500 CE</p>
+        </div>
+
+        <div class="timeline">
+            <div class="timeline-line"></div>
+
+            <div class="timeline-event left" onclick="toggleDetails(this)">
+                <div class="event-marker egyptian"></div>
+                <div class="event-card egyptian">
+                    <div class="event-date">c. 3100 BCE</div>
+                    <div class="event-title">Unification of Egypt</div>
+                    <div class="event-civilization egyptian">Egyptian</div>
+                    <div class="event-preview">Pharaoh Menes unites Upper and Lower Egypt, founding the first dynasty.
+                    </div>
+                    <div class="event-details">
+                        <p>This pivotal moment marked the beginning of ancient Egypt as we know it. Menes (also known as
+                            Narmer) successfully conquered Lower Egypt and established Memphis as the capital.</p>
+                        <p>The unification brought together the Red Crown of Lower Egypt and the White Crown of Upper
+                            Egypt into the double crown, symbolizing unified rule over the entire Nile River valley.</p>
+                    </div>
+                    <button class="expand-btn">Click to learn more ↓</button>
+                </div>
+            </div>
+
+            <div class="timeline-event right" onclick="toggleDetails(this)">
+                <div class="event-marker egyptian"></div>
+                <div class="event-card egyptian">
+                    <div class="event-date">c. 2580-2510 BCE</div>
+                    <div class="event-title">Great Pyramid of Giza Built</div>
+                    <div class="event-civilization egyptian">Egyptian</div>
+                    <div class="event-preview">Construction of the last remaining Wonder of the Ancient World.</div>
+                    <div class="event-details">
+                        <p>Built for Pharaoh Khufu during the Fourth Dynasty, this massive pyramid originally stood
+                            146.5 meters tall and was the world's tallest building for over 3,800 years.</p>
+                        <p>The pyramid required an estimated 2.3 million stone blocks, each weighing 2.5 to 15 tons. Its
+                            construction demonstrates the incredible engineering capabilities of ancient Egypt.</p>
+                    </div>
+                    <button class="expand-btn">Click to learn more ↓</button>
+                </div>
+            </div>
+
+            <div class="timeline-event left" onclick="toggleDetails(this)">
+                <div class="event-marker greek"></div>
+                <div class="event-card greek">
+                    <div class="event-date">776 BCE</div>
+                    <div class="event-title">First Olympic Games</div>
+                    <div class="event-civilization greek">Greek</div>
+                    <div class="event-preview">The ancient Olympics begin in Olympia, honoring Zeus.</div>
+                    <div class="event-details">
+                        <p>Held every four years in Olympia, these games brought together athletes from across the Greek
+                            world. The original Olympics featured events like running, wrestling, boxing, and chariot
+                            racing.</p>
+                        <p>During the games, a sacred truce was declared, allowing safe passage for athletes and
+                            spectators. This tradition helped unify the often-warring Greek city-states.</p>
+                    </div>
+                    <button class="expand-btn">Click to learn more ↓</button>
+                </div>
+            </div>
+
+            <div class="timeline-event right" onclick="toggleDetails(this)">
+                <div class="event-marker greek"></div>
+                <div class="event-card greek">
+                    <div class="event-date">508 BCE</div>
+                    <div class="event-title">Birth of Democracy in Athens</div>
+                    <div class="event-civilization greek">Greek</div>
+                    <div class="event-preview">Cleisthenes introduces democratic reforms in Athens.</div>
+                    <div class="event-details">
+                        <p>Cleisthenes' reforms established the world's first known democracy, where citizens could
+                            participate directly in government. He created the concept of "isonomia" - equality before
+                            the law.</p>
+                        <p>The new system included the ostracism process, where citizens could vote to exile politicians
+                            who became too powerful, preventing tyranny.</p>
+                    </div>
+                    <button class="expand-btn">Click to learn more ↓</button>
+                </div>
+            </div>
+
+            <div class="timeline-event left" onclick="toggleDetails(this)">
+                <div class="event-marker greek"></div>
+                <div class="event-card greek">
+                    <div class="event-date">336-323 BCE</div>
+                    <div class="event-title">Alexander the Great's Conquests</div>
+                    <div class="event-civilization greek">Greek</div>
+                    <div class="event-preview">Alexander creates one of history's largest empires.</div>
+                    <div class="event-details">
+                        <p>In just 13 years, Alexander conquered territories from Greece to India, creating an empire
+                            spanning three continents. His conquests spread Greek culture throughout the known world.
+                        </p>
+                        <p>Alexander founded over 20 cities, many named Alexandria. His empire facilitated cultural
+                            exchange between East and West, leading to the Hellenistic period.</p>
+                    </div>
+                    <button class="expand-btn">Click to learn more ↓</button>
+                </div>
+            </div>
+
+            <div class="timeline-event right" onclick="toggleDetails(this)">
+                <div class="event-marker roman"></div>
+                <div class="event-card roman">
+                    <div class="event-date">753 BCE</div>
+                    <div class="event-title">Founding of Rome</div>
+                    <div class="event-civilization roman">Roman</div>
+                    <div class="event-preview">According to legend, Romulus founds the city of Rome.</div>
+                    <div class="event-details">
+                        <p>Roman mythology tells of twin brothers Romulus and Remus, raised by a she-wolf. After a
+                            dispute, Romulus killed Remus and founded Rome on the Palatine Hill.</p>
+                        <p>Archaeological evidence suggests Rome actually developed gradually from several hilltop
+                            settlements, but the traditional founding date became central to Roman identity.</p>
+                    </div>
+                    <button class="expand-btn">Click to learn more ↓</button>
+                </div>
+            </div>
+
+            <div class="timeline-event left" onclick="toggleDetails(this)">
+                <div class="event-marker roman"></div>
+                <div class="event-card roman">
+                    <div class="event-date">49-44 BCE</div>
+                    <div class="event-title">Julius Caesar's Rise and Fall</div>
+                    <div class="event-civilization roman">Roman</div>
+                    <div class="event-preview">Caesar crosses the Rubicon, becomes dictator, and is assassinated.</div>
+                    <div class="event-details">
+                        <p>Caesar's crossing of the Rubicon River in 49 BCE started a civil war that ended the Roman
+                            Republic. His famous words "Alea iacta est" (the die is cast) marked the point of no return.
+                        </p>
+                        <p>As dictator, Caesar implemented major reforms but was assassinated on the Ides of March
+                            (March 15) in 44 BCE by senators who feared he would become king.</p>
+                    </div>
+                    <button class="expand-btn">Click to learn more ↓</button>
+                </div>
+            </div>
+
+            <div class="timeline-event right" onclick="toggleDetails(this)">
+                <div class="event-marker roman"></div>
+                <div class="event-card roman">
+                    <div class="event-date">27 BCE</div>
+                    <div class="event-title">Augustus Becomes First Emperor</div>
+                    <div class="event-civilization roman">Roman</div>
+                    <div class="event-preview">Octavian becomes Augustus, founding the Roman Empire.</div>
+                    <div class="event-details">
+                        <p>After defeating Mark Antony and Cleopatra, Octavian became the first Roman Emperor, taking
+                            the name Augustus. This marked the end of the Roman Republic and the beginning of the
+                            Empire.</p>
+                        <p>Augustus' reign brought the Pax Romana (Roman Peace), a period of relative stability that
+                            lasted over 200 years and allowed Roman culture to flourish.</p>
+                    </div>
+                    <button class="expand-btn">Click to learn more ↓</button>
+                </div>
+            </div>
+
+            <div class="timeline-event left" onclick="toggleDetails(this)">
+                <div class="event-marker roman"></div>
+                <div class="event-card roman">
+                    <div class="event-date">476 CE</div>
+                    <div class="event-title">Fall of Western Roman Empire</div>
+                    <div class="event-civilization roman">Roman</div>
+                    <div class="event-preview">The last Western Roman Emperor is deposed.</div>
+                    <div class="event-details">
+                        <p>Romulus Augustulus, the last Western Roman Emperor, was deposed by the Germanic chieftain
+                            Odoacer. This event traditionally marks the end of the Western Roman Empire.</p>
+                        <p>The Eastern Roman Empire (Byzantine Empire) continued for nearly another thousand years until
+                            Constantinople fell to the Ottomans in 1453 CE.</p>
+                    </div>
+                    <button class="expand-btn">Click to learn more ↓</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #daa520;"></div>
+                <span>Egyptian Civilization</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #4169e1;"></div>
+                <span>Greek Civilization</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #dc143c;"></div>
+                <span>Roman Civilization</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleDetails(eventElement) {
+            const details = eventElement.querySelector('.event-details');
+            const button = eventElement.querySelector('.expand-btn');
+
+            if (details.classList.contains('expanded')) {
+                details.classList.remove('expanded');
+                button.textContent = 'Click to learn more ↓';
+            } else {
+                // Close all other expanded details
+                document.querySelectorAll('.event-details.expanded').forEach(detail => {
+                    detail.classList.remove('expanded');
+                });
+                document.querySelectorAll('.expand-btn').forEach(btn => {
+                    btn.textContent = 'Click to learn more ↓';
+                });
+
+                // Open this one
+                details.classList.add('expanded');
+                button.textContent = 'Click to collapse ↑';
+            }
+        }
+
+        // Add smooth scrolling animation on load
+        window.addEventListener('load', function () {
+            const events = document.querySelectorAll('.timeline-event');
+            events.forEach((event, index) => {
+                event.style.opacity = '0';
+                event.style.transform = 'translateY(50px)';
+
+                setTimeout(() => {
+                    event.style.transition = 'all 0.6s ease';
+                    event.style.opacity = '1';
+                    event.style.transform = 'translateY(0)';
+                }, index * 200);
+            });
+        });
+    </script>
+    <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'97795c67b27e8410',t:'MTc1NjYxMDEwMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
+</html>
